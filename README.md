@@ -16,15 +16,6 @@ Babele 없이 동작하는 한국어 컴펜디엄과, 코코포리아식 비주�
 - **공용 창** — 상대별 귓속말, 모두가 함께 쓰는 공유 노트
 - **디스코드 음성 연동** *(선택)* — 음성 채널에서 말하는 사람의 초상화가 앞으로 나옵니다
 
-## 설치
-
-Foundry 설정 화면 → **Add-on Modules** → **Install Module** → 아래 주소를 붙여넣기
-
-```
-https://github.com/<USER>/<REPO>/releases/latest/download/module.json
-```
-
-설치 후 월드에서 모듈을 활성화하세요.
 
 ## 디스코드 음성 연동 (선택)
 
@@ -45,10 +36,3 @@ Node.js 20 이상은 브리지를 돌릴 컴퓨터에 **직접 설치**해야 �
 - Call of Cthulhu 7th Edition 시스템 8.15 이상
 - 디스코드 연동 시: Node.js 20 이상
 
-## 변경 이력
-
-[`CHANGELOG.md`](CHANGELOG.md)
-
-## 만든 사람
-
-Rutz (rutz179)
