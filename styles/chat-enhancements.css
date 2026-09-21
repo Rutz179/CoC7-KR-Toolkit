@@ -444,3 +444,36 @@ img.coc7ko-avatar {
 .coc7ko-chat-root .chat-message.coc7ko-note-message {
   display: none !important;
 }
+
+/* --- "…님이 입력 중입니다" ------------------------------------------------ */
+
+.coc7ko-typing-reserve .coc7ko-typing-text {
+  gap: 4px;
+  font-style: normal;
+}
+
+.coc7ko-typing-reserve .coc7ko-typing-text .dots {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.coc7ko-typing-reserve .coc7ko-typing-text .dots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: coc7ko-typing-dot 1.2s infinite ease-in-out;
+}
+
+.coc7ko-typing-reserve .coc7ko-typing-text .dots i:nth-child(2) { animation-delay: 0.2s; }
+.coc7ko-typing-reserve .coc7ko-typing-text .dots i:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes coc7ko-typing-dot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30%           { opacity: 1;    transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coc7ko-typing-reserve .coc7ko-typing-text .dots i { animation: none; opacity: 0.6; }
+}

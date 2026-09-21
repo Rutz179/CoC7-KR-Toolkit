@@ -502,6 +502,9 @@ function installChatUi() {
 
     relocateTypingIndicators(root);
   }
+
+  // A re-rendered sidebar gets a fresh, empty reserve strip.
+  renderTyping();
 }
 
 function scheduleInstall() {
@@ -678,9 +681,32 @@ Hooks.once("init", () => {
     onChange: applyStyleVariables
   });
 
+  game.settings.register(MODULE_ID, "typingIndicator", {
+    name: "입력 중 표시",
+    hint: "누군가 채팅창에 글을 쓰는 동안 입력창 위에 '…님이 입력 중입니다'를 보여줍니다. 귓속말(/w)을 쓰는 중에는 표시하지 않습니다. Cautious Gamemaster's Pack의 같은 기능을 대신합니다.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+    onChange: () => {
+      for (const timer of typingUsers.values()) clearTimeout(timer);
+      typingUsers.clear();
+      renderTyping();
+    }
+  });
+
+  game.settings.register(MODULE_ID, "typingShowKeeper", {
+    name: "키퍼의 입력 중 표시도 보이기",
+    hint: "끄면 키퍼가 글을 쓰는 동안에는 플레이어에게 표시되지 않습니다. 키퍼가 무언가 준비하고 있다는 걸 미리 들키지 않기 위한 기본값입니다.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false
+  });
+
   game.settings.register(MODULE_ID, "typingReserveHeight", {
     name: "입력 표시 예약 높이(px)",
-    hint: "'…님이 입력 중입니다' 표시가 채팅 카드를 밀어올리지 않도록 비워두는 공간입니다. 0이면 사용하지 않습니다.",
+    hint: "'…님이 입력 중입니다'가 표시되는 줄의 높이입니다. 이 공간은 늘 비워두므로 표시가 나타나고 사라져도 채팅 카드가 움직이지 않습니다. 0이면 입력 중 표시도 보이지 않습니다.",
     scope: "client",
     config: true,
     type: Number,
@@ -778,3 +804,147 @@ Hooks.on("collapseSidebar", () => scheduleInstall());
 Hooks.on("changeSidebarTab", () => scheduleInstall());
 Hooks.on("deleteChatMessage", () => scheduleRegroup());
 Hooks.on("updateChatMessage", () => scheduleRegroup());
+
+/* --- "…님이 입력 중입니다" --------------------------------------------------- *
+ *
+ * Replaces the one part of Cautious Gamemaster's Pack this table used. While
+ * someone types in the chat box their client announces it over the module
+ * socket; everyone else shows the names in the reserved strip above their own
+ * input, which never pushes the message list around.
+ *
+ *  - Announcements are throttled (one every 2 s while typing), and a name
+ *    disappears 3.5 s after its last announcement, or at once when the text
+ *    is cleared, sent, or the box loses focus.
+ *  - Whispers (/w, /whisper) are never announced: who is whispering is
+ *    itself private.
+ *  - The keeper's typing is hidden by default, so a long pause while the
+ *    keeper writes does not tip the players off. A setting shows it.
+ *  - Only the chat box counts. The notes and whisper panels, journals and
+ *    other editors are ignored.
+ * ------------------------------------------------------------------------ */
+
+const TYPING_SOCKET = `module.${MODULE_ID}`;
+const TYPING_SEND_EVERY_MS = 2000;
+const TYPING_EXPIRES_MS = 3500;
+
+const typingUsers = new Map();   // userId -> expiry timer
+let amTyping = false;
+let lastTypingSent = 0;
+
+/** "A님이", "A, B님이", "여러 명이" — kept pure so it can be tested. */
+function typingText(names) {
+  if (!names.length) return "";
+  if (names.length > 3) return "여러 명이 입력 중입니다";
+  return `${names.join(", ")}님이 입력 중입니다`;
+}
+
+function renderTyping() {
+  const names = [...typingUsers.keys()]
+    .map(id => game.users.get(id)?.name)
+    .filter(Boolean);
+  const text = typingText(names);
+
+  for (const reserve of document.querySelectorAll(".coc7ko-typing-reserve")) {
+    let node = reserve.querySelector(":scope > .coc7ko-typing-text");
+
+    if (!text) {
+      node?.remove();
+      continue;
+    }
+
+    if (!node) {
+      node = document.createElement("div");
+      node.className = "coc7ko-typing-text";
+      reserve.append(node);
+    }
+
+    node.innerHTML = `<span>${foundry.utils.escapeHTML(text)}</span><span class="dots"><i></i><i></i><i></i></span>`;
+  }
+}
+
+function typingEnabled() {
+  return !!setting("typingIndicator", true);
+}
+
+function sendTyping(typing) {
+  if (!typingEnabled()) return;
+  if (game.user.isGM && !setting("typingShowKeeper", false)) return;
+  game.socket.emit(TYPING_SOCKET, { action: "typing", userId: game.user.id, typing });
+}
+
+function stopTyping() {
+  if (!amTyping) return;
+  amTyping = false;
+  sendTyping(false);
+}
+
+/** The chat input under an event target, or null for any other editor. */
+function chatField(target) {
+  const field = target?.closest?.("textarea, [contenteditable='true'], [contenteditable='']");
+  if (!field) return null;
+  if (!field.closest([...CHAT_ROOT_SELECTORS, "#chat-notifications"].join(","))) return null;
+  if (field.closest(".coc7ko-side-panel")) return null;
+  return field;
+}
+
+function fieldText(field) {
+  return String(field.value ?? field.innerText ?? field.textContent ?? "").trim();
+}
+
+function onChatInput(event) {
+  const field = chatField(event.target);
+  if (!field) return;
+
+  const text = fieldText(field);
+
+  // Nothing typed any more, or a whisper: say nothing (and retract).
+  if (!text || /^\/(w|whisper)\b/i.test(text)) return stopTyping();
+
+  const now = Date.now();
+  if (!amTyping || now - lastTypingSent > TYPING_SEND_EVERY_MS) {
+    amTyping = true;
+    lastTypingSent = now;
+    sendTyping(true);
+  }
+}
+
+function onChatBlur(event) {
+  if (chatField(event.target)) stopTyping();
+}
+
+function receiveTyping(payload) {
+  if (payload?.action !== "typing") return;
+  if (!payload.userId || payload.userId === game.user.id) return;
+  if (!typingEnabled()) return;
+
+  clearTimeout(typingUsers.get(payload.userId));
+
+  if (payload.typing) {
+    typingUsers.set(payload.userId, setTimeout(() => {
+      typingUsers.delete(payload.userId);
+      renderTyping();
+    }, TYPING_EXPIRES_MS));
+  } else {
+    typingUsers.delete(payload.userId);
+  }
+
+  renderTyping();
+}
+
+Hooks.once("ready", () => {
+  game.socket.on(TYPING_SOCKET, receiveTyping);
+  document.addEventListener("input", onChatInput, true);
+  document.addEventListener("focusout", onChatBlur, true);
+});
+
+// Sending a message ends "typing" at once, for the sender and for everyone.
+Hooks.on("createChatMessage", message => {
+  const authorId = message.author?.id ?? message.user?.id;
+  if (authorId === game.user.id) stopTyping();
+
+  if (typingUsers.has(authorId)) {
+    clearTimeout(typingUsers.get(authorId));
+    typingUsers.delete(authorId);
+    renderTyping();
+  }
+});
