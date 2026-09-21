@@ -802,20 +802,25 @@ class Coc7KoRollPalette extends Coc7KoPanel {
   _activate(el) {
     const grid = el.querySelector(".roll-grid");
 
-    for (const zone of [grid, el.querySelector(".panel-body")].filter(Boolean)) {
-      zone.addEventListener("dragover", event => {
-        event.preventDefault();
-        grid?.classList.add("drop-target");
-      });
-
-      zone.addEventListener("dragleave", () => grid?.classList.remove("drop-target"));
-
-      zone.addEventListener("drop", async event => {
-        event.preventDefault();
-        grid?.classList.remove("drop-target");
-        await this._acceptDrop(event);
-      });
-    }
+    /*
+     * One drop zone only. The list sits inside the panel body, so listening on
+     * both meant a drop onto the list ran once on the list and again when the
+     * event bubbled up to the body — registering every favourite twice.
+     */
+    const zone = el.querySelector(".panel-body");
+    zone?.addEventListener("dragover", event => {
+      event.preventDefault();
+      grid?.classList.add("drop-target");
+    });
+    zone?.addEventListener("dragleave", event => {
+      if (!zone.contains(event.relatedTarget)) grid?.classList.remove("drop-target");
+    });
+    zone?.addEventListener("drop", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      grid?.classList.remove("drop-target");
+      await this._acceptDrop(event);
+    });
 
     el.querySelectorAll(".roll-chip").forEach(chip => {
       chip.addEventListener("contextmenu", event => {
@@ -854,6 +859,12 @@ class Coc7KoRollPalette extends Coc7KoPanel {
     }
 
     const entries = this.entries();
+
+    // The same link twice in a row within a moment is a duplicate drop.
+    const last = entries[entries.length - 1];
+    if (last?.content === content && Date.now() - (this._lastDropAt ?? 0) < 1500) return;
+    this._lastDropAt = Date.now();
+
     entries.push({
       label: label || "판정",
       icon: "fa-solid fa-dice-d20",
@@ -945,6 +956,15 @@ const panels = {
 };
 
 Hooks.once("init", () => {
+  game.settings.register(MODULE_ID, "gmSeesPlayerWhispers", {
+    name: "플레이어끼리의 귓속말을 키퍼도 보기",
+    hint: "켜면 플레이어가 다른 플레이어에게 보내는 귓속말에 키퍼가 수신자로 자동 추가됩니다. 플레이어에게도 수신자 목록에 키퍼가 보이므로 숨김 없이 공개적으로 동작합니다. 끄면 Foundry 기본대로 키퍼도 볼 수 없습니다.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true
+  });
+
   game.settings.register(MODULE_ID, "whisperPolicy", {
     name: "귓속말 창 사용 범위",
     hint: "귓속말 창에서 플레이어가 누구에게 보낼 수 있는지 정합니다. 어느 쪽이든 /w 명령을 직접 입력하는 수동 귓속말은 그대로 가능합니다.",
@@ -1054,4 +1074,38 @@ Hooks.on("getSceneControlButtons", controls => {
     visible: game.user.isGM,
     onChange: () => panels.rolls.toggle()
   };
+});
+
+/* --- 키퍼의 귓속말 열람 --------------------------------------------------- *
+ *
+ * Foundry gives keepers no special right to read whispers: a whisper between
+ * two players is invisible to the keeper unless the keeper is a recipient.
+ * With this setting on, keepers are added as recipients when a player
+ * whispers another player — the same thing the "GM Always See Whispers"
+ * approach does. It is deliberately visible: players see the keeper in the
+ * recipient list, so nothing is read behind their backs.
+ *
+ * Handled on the author's own client, before the message is created, so it
+ * covers /w typed in chat, the whisper panel and whispers from other modules.
+ * ------------------------------------------------------------------------ */
+Hooks.on("preCreateChatMessage", (message, data, options, userId) => {
+  if (userId !== game.user.id) return;
+  if (!setting("gmSeesPlayerWhispers", true)) return;
+
+  const author = game.users.get(userId);
+  if (!author || author.isGM) return;
+
+  const whisper = Array.from(message.whisper ?? data.whisper ?? []);
+  if (!whisper.length) return;
+
+  // A whisper only to oneself (e.g. a self roll) is left private.
+  if (!whisper.some(id => id !== userId)) return;
+
+  // Already includes a keeper: nothing to do.
+  if (whisper.some(id => game.users.get(id)?.isGM)) return;
+
+  const keepers = game.users.filter(user => user.isGM).map(user => user.id);
+  if (!keepers.length) return;
+
+  message.updateSource({ whisper: [...new Set([...whisper, ...keepers])] });
 });
