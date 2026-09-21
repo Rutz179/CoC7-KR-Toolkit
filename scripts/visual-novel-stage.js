@@ -811,6 +811,38 @@ class Coc7KoStageOverlay {
     return canvas?.scene;
   }
 
+  /*
+   * Updates only the highlight classes on the cards already on screen.
+   *
+   * Voice activity changes many times a second in a lively conversation;
+   * rebuilding the whole stage (every portrait image included) for each change
+   * was heavy enough to starve other programs on a slower PC — including the
+   * Discord client's own audio. Returns false when a full render is needed.
+   */
+  applyVoiceHighlight() {
+    const el = this.element;
+    if (!el?.isConnected || el.classList.contains("hidden")) return false;
+
+    const cards = el.querySelectorAll(".coc7ko-stage-slot[data-slot]:not(.empty)");
+    if (!cards.length) return false;
+
+    const focused = this.autoFocusedSlot ?? this.flags?.focusedSlot ?? null;
+    const anyone = !!focused || this.speakingSlots.size > 0;
+
+    for (const card of cards) {
+      const key = card.dataset.slot;
+      const isFocused = focused === key || this.speakingSlots.has(key);
+
+      card.classList.toggle("focused", isFocused);
+      card.classList.toggle("dimmed", !anyone || !isFocused);
+
+      const badge = card.querySelector(".speaker-badge");
+      if (badge) badge.textContent = isFocused ? "화자" : "";
+    }
+
+    return true;
+  }
+
   get flags() {
     return getStageFlags(this.scene);
   }
@@ -3662,33 +3694,60 @@ function setSpeaking(userId, speaking) {
 }
 
 /** Lights or clears one stage slot directly; used by the voice relay. */
+/*
+ * Discord reports a stop at every short pause between words, and the bridge
+ * repeats "still speaking" every few seconds. Both used to redraw the stage:
+ *
+ *  - a repeat for a slot that is already lit now does nothing at all;
+ *  - a stop keeps the slot lit for a moment, so a breath between words does
+ *    not flicker the highlight off and on (and does not cost two updates).
+ *
+ * Visible changes go through applyVoiceHighlight(), which only toggles CSS
+ * classes instead of rebuilding the stage.
+ */
+const SPEAKING_END_HOLD_MS = 450;
+
+function showVoiceChange(overlay) {
+  if (!overlay.applyVoiceHighlight?.()) overlay.refresh();
+}
+
+function releaseSpeakingSlot(slotKey) {
+  speakingTimers.delete(slotKey);
+
+  const overlay = game.coc7koStage?.overlay;
+  if (!overlay?.speakingSlots.delete(slotKey)) return;
+  showVoiceChange(overlay);
+}
+
+/** Lights or clears one stage slot directly; used by the voice relay. */
 function setSpeakingSlot(slotKey, speaking) {
   const overlay = game.coc7koStage?.overlay;
   if (!overlay || !slotKey) return;
 
   clearTimeout(speakingTimers.get(slotKey));
-  speakingTimers.delete(slotKey);
 
-  if (speaking) {
-    overlay.speakingSlots.add(slotKey);
-    speakingTimers.set(slotKey, setTimeout(() => setSpeakingSlot(slotKey, false), SPEAKING_STALE_MS));
-  } else {
-    overlay.speakingSlots.delete(slotKey);
+  if (!speaking) {
+    speakingTimers.set(slotKey, setTimeout(() => releaseSpeakingSlot(slotKey), SPEAKING_END_HOLD_MS));
+    return;
   }
 
-  overlay.refresh();
+  // Safety net: a user who drops out mid-sentence never sends "stopped".
+  speakingTimers.set(slotKey, setTimeout(() => releaseSpeakingSlot(slotKey), SPEAKING_STALE_MS));
+
+  if (overlay.speakingSlots.has(slotKey)) return;   // repeat or resumed after a pause
+  overlay.speakingSlots.add(slotKey);
+  showVoiceChange(overlay);
 }
 
-/** Clears every voice highlight, e.g. when the bridge connection drops. */
 function clearSpeaking() {
   for (const timer of speakingTimers.values()) clearTimeout(timer);
   speakingTimers.clear();
   speakingUsers.clear();
 
   const overlay = game.coc7koStage?.overlay;
-  if (!overlay) return;
+  if (!overlay || !overlay.speakingSlots.size) return;
   overlay.speakingSlots.clear();
-  overlay.refresh();
+  showVoiceChange(overlay);
 }
 
 Hooks.once("ready", () => {

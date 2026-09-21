@@ -2,7 +2,7 @@
   "id": "coc7-ko",
   "title": "Rutz's CoC7 한국어 툴킷",
   "description": "Call of Cthulhu 7th Edition for Foundry VTT의 한국어 사용자 경험을 개선하는 모듈입니다. Babele에 의존하지 않는 한국어 CoCID 기반 컴펜디엄과 한국어 사용자용 편의 기능을 제공합니다.<br>This module improves the Korean user experience for Call of Cthulhu 7th Edition on Foundry VTT, including native Korean CoCID-based compendiums without a Babele dependency.",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "esmodules": [
     "scripts/visual-novel-stage.js",
     "scripts/chat-enhancements.js",
@@ -124,8 +124,6 @@
       }
     }
   ],
-  "url": "https://github.com/Rutz179/CoC7-KR-Toolkit",
-  "manifest": "https://github.com/Rutz179/CoC7-KR-Toolkit/releases/latest/download/module.json",
-  "download": "https://github.com/Rutz179/CoC7-KR-Toolkit/releases/latest/download/module.zip",
+  "url": "",
   "socket": true
 }
