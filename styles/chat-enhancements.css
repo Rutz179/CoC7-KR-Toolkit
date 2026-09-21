@@ -1,0 +1,446 @@
+/* ==========================================================================
+ * CoC7-KO | Chat Enhancements (v0.7.1)
+ *
+ * Visual target: one rounded card per speaker, portrait and name on top,
+ * the controlling player's name in small type beneath it, and every
+ * consecutive line from that speaker merged into the same card.
+ * ========================================================================== */
+
+:root {
+  --coc7ko-chat-font: RIDIBatang, "리디바탕", "Nanum Myeongjo", "Batang", serif;
+  --coc7ko-chat-heading: var(--coc7ko-chat-font);
+  --coc7ko-chat-font-size: 14px;
+  --coc7ko-typing-reserve: 26px;
+
+  /* Overridden per theme below. */
+  --coc7ko-surface: #f5f3ef;
+  --coc7ko-surface-hover: #faf8f5;
+  --coc7ko-text: #24242a;
+  --coc7ko-text-soft: #6f6f7a;
+  --coc7ko-hairline: rgba(0, 0, 0, 0.09);
+  --coc7ko-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  --coc7ko-accent: #8d8d99;
+  --coc7ko-whisper: #7b63c4;
+  --coc7ko-radius: 14px;
+}
+
+body.coc7ko-chat-dark {
+  --coc7ko-surface: #24242b;
+  --coc7ko-surface-hover: #2b2b34;
+  --coc7ko-text: #ececf4;
+  --coc7ko-text-soft: #9a9aa8;
+  --coc7ko-hairline: rgba(255, 255, 255, 0.10);
+  --coc7ko-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --coc7ko-whisper: #a58ce8;
+}
+
+/*
+ * Message styling is keyed on the per-message class the script adds, not on
+ * the container. Foundry renders chat cards in more than one place — the
+ * sidebar, a popped-out log, and the floating preview shown when the chat tab
+ * is hidden — and tying the rules to a container meant the preview cards got
+ * the layout but none of the sizing, which is why the portrait appeared at
+ * its natural size instead of as a thumbnail.
+ */
+
+/* --- Log surface --------------------------------------------------------- */
+
+.coc7ko-chat-root .chat-log,
+.coc7ko-chat-root #chat-log {
+  padding: 2px 4px 6px;
+  scrollbar-width: thin;
+}
+
+/* --- The card ------------------------------------------------------------ */
+
+.chat-message.coc7ko-chat-message {
+  position: relative;
+  isolation: isolate;
+
+  margin: 9px 4px 0;
+  padding: 11px 14px 12px;
+
+  border: none;
+  border-radius: var(--coc7ko-radius);
+  background: var(--coc7ko-surface);
+  box-shadow: var(--coc7ko-shadow);
+
+  color: var(--coc7ko-text);
+  font-family: var(--coc7ko-chat-font);
+  font-size: var(--coc7ko-chat-font-size);
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+
+  transition: background 120ms ease;
+}
+
+.chat-message.coc7ko-chat-message:hover {
+  background: var(--coc7ko-surface-hover);
+}
+
+/* A slim accent stripe in the speaking user's colour. */
+.chat-message.coc7ko-chat-message.coc7ko-group-start::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  z-index: 1;
+
+  border-radius: var(--coc7ko-radius) var(--coc7ko-radius) 0 0;
+  background: linear-gradient(
+    90deg,
+    var(--coc7ko-user-color, var(--coc7ko-accent)),
+    color-mix(in srgb, var(--coc7ko-user-color, var(--coc7ko-accent)) 35%, transparent)
+  );
+}
+
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .chat-message.coc7ko-chat-message.coc7ko-group-start::before {
+    background: var(--coc7ko-user-color, var(--coc7ko-accent));
+  }
+}
+
+/* --- Merging consecutive lines ------------------------------------------- */
+
+.chat-message.coc7ko-chat-message.coc7ko-grouped {
+  margin-top: 0;
+  padding-top: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chat-message.coc7ko-chat-message:not(.coc7ko-group-end) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  padding-bottom: 2px;
+}
+
+.chat-message.coc7ko-chat-message.coc7ko-grouped.coc7ko-group-end {
+  border-radius: 0 0 var(--coc7ko-radius) var(--coc7ko-radius);
+  padding-bottom: 12px;
+  box-shadow: var(--coc7ko-shadow);
+  clip-path: inset(0 -14px -14px -14px);
+}
+
+.chat-message.coc7ko-chat-message.coc7ko-grouped .coc7ko-header {
+  display: none;
+}
+
+/* Keeper controls stay reachable on merged lines. */
+.chat-message.coc7ko-chat-message.coc7ko-grouped .message-metadata {
+  position: absolute;
+  top: 2px;
+  right: 10px;
+  z-index: 4;
+  display: flex;
+  opacity: 0;
+  transition: opacity 110ms ease;
+}
+
+.chat-message.coc7ko-chat-message.coc7ko-grouped:hover .message-metadata {
+  opacity: 1;
+}
+
+/* --- Header: portrait, name, player, timestamp --------------------------- */
+
+.chat-message.coc7ko-chat-message .coc7ko-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "avatar name   meta"
+    "avatar user   meta"
+    "flavor flavor flavor";
+  align-items: center;
+  column-gap: 11px;
+  row-gap: 0;
+
+  margin: 0 0 9px;
+  padding: 0;
+  border: none;
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-avatar {
+  grid-area: avatar;
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  object-position: 50% 22%;
+
+  border: 1px solid var(--coc7ko-hairline);
+  border-radius: 10px;
+  background: rgba(127, 127, 140, 0.15);
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-sender {
+  grid-area: name;
+  margin: 0;
+  padding: 0;
+  border: none;
+
+  align-self: end;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: var(--coc7ko-text);
+  font-family: var(--coc7ko-chat-heading);
+  font-size: calc(var(--coc7ko-chat-font-size) + 2px);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-chat-user {
+  grid-area: user;
+  align-self: start;
+
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: var(--coc7ko-text-soft);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/*
+ * Every other header element (timestamp, delete button, whisper target) is
+ * collected into this one container by the script, so nothing can overlap.
+ */
+.chat-message.coc7ko-chat-message .coc7ko-meta {
+  grid-area: meta;
+  align-self: center;
+  justify-self: end;
+
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  color: var(--coc7ko-text-soft);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-meta > * {
+  margin: 0;
+  padding: 0;
+  float: none;
+  color: inherit;
+  font-size: inherit;
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-meta a,
+.chat-message.coc7ko-chat-message .coc7ko-meta button,
+.chat-message.coc7ko-chat-message .coc7ko-meta i {
+  color: var(--coc7ko-text-soft);
+  opacity: 0.85;
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-meta a:hover,
+.chat-message.coc7ko-chat-message .coc7ko-meta button:hover {
+  color: var(--coc7ko-text);
+  opacity: 1;
+}
+
+/* --- Roll flavour line, colour-coded by difficulty ----------------------- */
+
+.chat-message.coc7ko-chat-message .coc7ko-flavor {
+  grid-area: flavor;
+  margin: 9px 0 0;
+  padding: 6px 10px;
+
+  border-radius: 8px;
+  border-left: 4px solid var(--coc7ko-diff, var(--coc7ko-text-soft));
+  background: rgba(127, 127, 140, 0.12);
+
+  color: var(--coc7ko-text);
+  font-family: var(--coc7ko-chat-heading);
+  font-size: calc(var(--coc7ko-chat-font-size) + 2px);
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  text-align: left;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+/* Flavour outside the header (some cards render it in the body). */
+.chat-message.coc7ko-chat-message .message-content .coc7ko-flavor {
+  display: block;
+  margin: 0 0 8px;
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-flavor[data-ck-difficulty="regular"] {
+  --coc7ko-diff: #3f8f5d;
+  color: #2c6b45;
+  background: rgba(63, 143, 93, 0.13);
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-flavor[data-ck-difficulty="hard"] {
+  --coc7ko-diff: #c78a1f;
+  color: #8f6210;
+  background: rgba(199, 138, 31, 0.15);
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-flavor[data-ck-difficulty="extreme"] {
+  --coc7ko-diff: #c4442f;
+  color: #9c3222;
+  background: rgba(196, 68, 47, 0.15);
+}
+
+.chat-message.coc7ko-chat-message .coc7ko-flavor[data-ck-difficulty="critical"] {
+  --coc7ko-diff: #8250c4;
+  color: #6a3ea6;
+  background: rgba(130, 80, 196, 0.15);
+}
+
+/* The dark card needs lighter text on the same hues. */
+body.coc7ko-chat-dark .chat-message.coc7ko-chat-message .coc7ko-flavor[data-ck-difficulty="regular"] { color: #86d9a4; }
+body.coc7ko-chat-dark .chat-message.coc7ko-chat-message .coc7ko-flavor[data-ck-difficulty="hard"] { color: #ecc069; }
+body.coc7ko-chat-dark .chat-message.coc7ko-chat-message .coc7ko-flavor[data-ck-difficulty="extreme"] { color: #f08a78; }
+body.coc7ko-chat-dark .chat-message.coc7ko-chat-message .coc7ko-flavor[data-ck-difficulty="critical"] { color: #c3a1f0; }
+
+/* --- Content ------------------------------------------------------------- */
+
+.chat-message.coc7ko-chat-message .message-content {
+  color: var(--coc7ko-text);
+  font-family: var(--coc7ko-chat-font);
+  font-size: var(--coc7ko-chat-font-size);
+  line-height: 1.6;
+}
+
+.chat-message.coc7ko-chat-message .message-content > p {
+  margin: 0 0 4px;
+}
+
+.chat-message.coc7ko-chat-message .message-content > p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message.coc7ko-chat-message .message-content a.content-link,
+.chat-message.coc7ko-chat-message .message-content a.inline-roll {
+  color: inherit;
+  background: rgba(127, 127, 140, 0.16);
+  border: 1px solid var(--coc7ko-hairline);
+  border-radius: 5px;
+}
+
+/* --- Whispers ------------------------------------------------------------ */
+
+.chat-message.coc7ko-chat-message.coc7ko-whisper {
+  background: color-mix(in srgb, var(--coc7ko-whisper) 12%, var(--coc7ko-surface));
+}
+
+.chat-message.coc7ko-chat-message.coc7ko-whisper.coc7ko-group-start::before {
+  background: var(--coc7ko-whisper);
+}
+
+/* --- Roll and system cards ----------------------------------------------- */
+
+/*
+ * System-authored cards bring their own layout. Give them the same frame but
+ * step back from their internals so CoC7 roll cards keep rendering correctly.
+ */
+.chat-message.coc7ko-chat-message.coc7ko-roll {
+  padding: 10px 11px 11px;
+}
+
+.chat-message.coc7ko-chat-message .dice-roll,
+.chat-message.coc7ko-chat-message .chat-card {
+  font-family: var(--coc7ko-chat-font);
+}
+
+/* --- Chat input ---------------------------------------------------------- */
+
+.coc7ko-chat-root textarea {
+  font-family: var(--coc7ko-chat-font);
+  font-size: var(--coc7ko-chat-font-size);
+  line-height: 1.6;
+  border-radius: 11px;
+}
+
+/* --- Reserved strip for "…is typing" indicators -------------------------- */
+
+.coc7ko-typing-reserve {
+  position: relative;
+  flex: 0 0 auto;
+
+  height: var(--coc7ko-typing-reserve, 26px);
+  min-height: var(--coc7ko-typing-reserve, 26px);
+  max-height: var(--coc7ko-typing-reserve, 26px);
+
+  margin: 0;
+  padding: 0 10px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/*
+ * Anything relocated in here is pinned inside the reserved strip, so a typing
+ * notification appearing or disappearing can never reflow the message list.
+ */
+.coc7ko-typing-reserve > * {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+
+  font-family: var(--coc7ko-chat-font);
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.4;
+  color: rgba(236, 236, 244, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Safety net ----------------------------------------------------------
+ * If a re-render ever strands one of our injected elements outside a chat
+ * root, it must not float over the canvas. The script removes orphans, and
+ * this hides any that exist between a detach and the next cleanup pass.
+ */
+@supports selector(:not(.a *)) {
+  .coc7ko-typing-reserve:not(.coc7ko-chat-root *) {
+    display: none !important;
+  }
+}
+
+
+/* --- Hard guard for the portrait -----------------------------------------
+ * The avatar is an element this module creates, so nothing else targets this
+ * class. Declaring its box here means the thumbnail keeps its size in every
+ * container Foundry renders a chat card into, including the floating preview
+ * that appears while the chat tab is hidden.
+ */
+img.coc7ko-avatar {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  max-width: 42px;
+  max-height: 42px;
+  object-fit: cover;
+  object-position: 50% 22%;
+  border-radius: 10px;
+}
+
+/* Shared notes live in their own panel; keep them out of the chat log. */
+.coc7ko-chat-root .chat-message.coc7ko-note-message {
+  display: none !important;
+}
