@@ -1,0 +1,54 @@
+# Rutz's CoC7 한국어 툴킷
+
+**Call of Cthulhu 7th Edition** for Foundry VTT를 위한 한국어 툴킷입니다.
+Babele 없이 동작하는 한국어 컴펜디엄과, 코코포리아식 비주얼 노벨 연출 기능을 제공합니다.
+
+![Foundry](https://img.shields.io/badge/Foundry-v13%20~%20v14-orange)
+![CoC7](https://img.shields.io/badge/CoC7-8.15%2B-green)
+
+## 주요 기능
+
+- **한국어 컴펜디엄** — 기능, 무기, 직업, 아키타입, 조사자 설정, 광기표, 공포증·집착증 (CoCID 기반)
+- **비주얼 노벨 스테이지** — PC 6명 · NPC 4명 초상화, 말풍선, 화면 크기 자동 맞춤, 자유 배치
+- **장면 연출** — 캔버스 전체 배경 + 중앙 이미지, 배경 블러, 장소 프리셋
+- **채팅 개선** — 연속 발언 병합, 초상화, 판정 난이도 색 구분, 한국어 글꼴
+- **키퍼 도구** — 장면 퀵바, 아이템 · NPC 팔레트(폴더 분류), 판정 팔레트
+- **공용 창** — 상대별 귓속말, 모두가 함께 쓰는 공유 노트
+- **디스코드 음성 연동** *(선택)* — 음성 채널에서 말하는 사람의 초상화가 앞으로 나옵니다
+
+## 설치
+
+Foundry 설정 화면 → **Add-on Modules** → **Install Module** → 아래 주소를 붙여넣기
+
+```
+https://github.com/<USER>/<REPO>/releases/latest/download/module.json
+```
+
+설치 후 월드에서 모듈을 활성화하세요.
+
+## 디스코드 음성 연동 (선택)
+
+모듈 설정 → **디스코드 음성 연동 사용**을 켜고 **설정 도우미**를 열면 단계별로 안내합니다.
+
+| 호스팅 방식 | 방법 |
+| --- | --- |
+| 내 PC (로컬) | 도우미가 만든 `.bat`을 모듈 폴더에 저장하고 더블클릭 |
+| 서버 | 도우미가 보여주는 짧은 명령을 SSH에서 한 줄씩 실행 (pm2 + Caddy) |
+
+Node.js 20 이상은 브리지를 돌릴 컴퓨터에 **직접 설치**해야 합니다. 자세한 내용은
+[`tools/discord-voice-bridge/README.md`](tools/discord-voice-bridge/README.md)를 참고하세요.
+봇은 "말하기 시작/끝" 신호만 받으며, 음성을 녹음하거나 해석하지 않습니다.
+
+## 요구 사항
+
+- Foundry VTT v13 이상 (v14 검증)
+- Call of Cthulhu 7th Edition 시스템 8.15 이상
+- 디스코드 연동 시: Node.js 20 이상
+
+## 변경 이력
+
+[`CHANGELOG.md`](CHANGELOG.md)
+
+## 만든 사람
+
+Rutz (rutz179)

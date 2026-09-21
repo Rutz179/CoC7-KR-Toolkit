@@ -1,0 +1,129 @@
+{
+  "id": "coc7-ko",
+  "title": "Rutz's CoC7 한국어 툴킷",
+  "description": "Call of Cthulhu 7th Edition for Foundry VTT의 한국어 사용자 경험을 개선하는 모듈입니다. Babele에 의존하지 않는 한국어 CoCID 기반 컴펜디엄과 한국어 사용자용 편의 기능을 제공합니다.<br>This module improves the Korean user experience for Call of Cthulhu 7th Edition on Foundry VTT, including native Korean CoCID-based compendiums without a Babele dependency.",
+  "version": "1.1.1",
+  "esmodules": [
+    "scripts/visual-novel-stage.js",
+    "scripts/chat-enhancements.js",
+    "scripts/scene-quickbar.js",
+    "scripts/window-tools.js",
+    "scripts/side-panels.js",
+    "scripts/voice-bridge.js",
+    "scripts/voice-setup.js"
+  ],
+  "styles": [
+    "styles/visual-novel-stage.css",
+    "styles/chat-enhancements.css",
+    "styles/ui-panels.css",
+    "styles/window-tools.css"
+  ],
+  "languages": [
+    {
+      "lang": "ko",
+      "name": "한국어",
+      "path": "lang/ko.json",
+      "system": "CoC7"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "authors": [
+    {
+      "name": "Rutz (rutz179)"
+    }
+  ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "CoC7",
+        "type": "system",
+        "compatibility": {
+          "minimum": "8.15"
+        }
+      }
+    ]
+  },
+  "packs": [
+    {
+      "name": "ko-skills",
+      "label": "기능 | ko",
+      "path": "packs/ko-skills",
+      "type": "Item",
+      "system": "CoC7",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "ko-weapons",
+      "label": "무기 | ko",
+      "path": "packs/ko-weapons",
+      "type": "Item",
+      "system": "CoC7",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "ko-wiki-phobias-and-manias",
+      "label": "공포증·집착증 | ko",
+      "path": "packs/ko-wiki-phobias-and-manias",
+      "type": "Item",
+      "system": "CoC7",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "ko-sanity-tables",
+      "label": "광기표 | ko",
+      "path": "packs/ko-sanity-tables",
+      "type": "RollTable",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "ko-occupations",
+      "label": "직업 | ko",
+      "path": "packs/ko-occupations",
+      "type": "Item",
+      "system": "CoC7",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "ko-setups",
+      "label": "조사자 설정 | ko",
+      "path": "packs/ko-setups",
+      "type": "Item",
+      "system": "CoC7",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    },
+    {
+      "name": "ko-archetypes",
+      "label": "아키타입 | ko",
+      "path": "packs/ko-archetypes",
+      "type": "Item",
+      "system": "CoC7",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    }
+  ],
+  "url": "",
+  "socket": true
+}

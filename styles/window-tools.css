@@ -1,0 +1,104 @@
+/* ==========================================================================
+ * CoC7-KO | Window Tools (v0.8.0)
+ * ========================================================================== */
+
+/* --- Resize grip added to otherwise fixed-size windows -------------------- */
+
+.coc7ko-external-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  opacity: 0.55;
+
+  background:
+    linear-gradient(135deg, transparent 46%, currentColor 46%, currentColor 55%, transparent 55%),
+    linear-gradient(135deg, transparent 68%, currentColor 68%, currentColor 77%, transparent 77%);
+
+  transition: opacity 110ms ease;
+}
+
+.coc7ko-external-grip:hover {
+  opacity: 1;
+}
+
+/*
+ * IMPORTANT (Foundry v14):
+ * Never change the window's own `position` here.
+ *
+ * ApplicationV2 windows are already absolute/fixed positioned and therefore
+ * provide the containing block needed by the resize grip. Setting
+ * `position: relative` on .coc7ko-resizable overrides Foundry's window
+ * positioning and turns a direct <body> child back into a flex item.
+ *
+ * That exact regression squeezes #interface and pushes the sidebar/chat
+ * toward the center whenever a decorated window such as Module Management
+ * is opened.
+ */
+.coc7ko-resizable {
+  /* intentionally no position override */
+}
+
+/*
+ * A window that was authored at a fixed size usually has no inner scroll
+ * region, so shrinking it would clip the content. Give the content area one.
+ */
+.coc7ko-resizable .window-content {
+  min-height: 0;
+  overflow: auto;
+}
+
+.coc7ko-resizing {
+  user-select: none;
+}
+
+.coc7ko-resizing iframe,
+.coc7ko-resizing canvas {
+  pointer-events: none;
+}
+
+/* --- Foundry v14 <dialog> / body-flex guard ------------------------------
+ *
+ * In v14, <body> participates in a flex-based workspace layout and DialogV2
+ * windows are direct children of <body>. A <dialog> which is left as
+ * position:static/relative becomes a flex item, so its width is subtracted
+ * from #interface. The visible symptom is the entire right sidebar/chat
+ * jumping toward the middle whenever a dialog opens.
+ *
+ * The important rule is therefore NOT "does it already have left/top?".
+ * Inline coordinates do not remove an element from flex flow. Every OPEN
+ * direct-child dialog must be positioned out-of-flow.
+ *
+ * Foundry's own inline left/top values are preserved. Only unpositioned
+ * dialogs receive the centered fallback below.
+ */
+body > dialog:not([open]) {
+  display: none !important;
+}
+
+body > dialog[open] {
+  position: fixed !important;
+  flex: none !important;
+  margin: 0;
+  max-height: 90vh;
+}
+
+/* Only center dialogs for which Foundry supplied no explicit coordinates. */
+body > dialog[open]:not([style*="left"]):not([style*="top"]) {
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+}
+
+/*
+ * A positioned dialog must never influence workspace width even if another
+ * theme/module has applied flex sizing to all direct body children.
+ */
+body > dialog {
+  flex-grow: 0 !important;
+  flex-shrink: 0 !important;
+}

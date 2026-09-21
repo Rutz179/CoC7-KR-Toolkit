@@ -1,0 +1,1196 @@
+/* v0.6.0 Keeper Item Palette -------------------------------------------- */
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.pc.item-drop-hover {
+  outline: 3px solid rgba(109, 220, 145, 0.95);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 3px rgba(109, 220, 145, 0.18),
+    0 12px 30px rgba(0, 0, 0, 0.48);
+  filter: brightness(1.10);
+}
+
+body.coc7ko-item-dragging #coc7ko-stage-overlay .coc7ko-stage-slot.pc:not(.empty) {
+  pointer-events: auto;
+}
+
+body.coc7ko-item-dragging #coc7ko-stage-overlay .coc7ko-stage-slot.pc:not(.empty)::after {
+  content: "아이템 지급";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  z-index: 60;
+
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(16, 36, 22, 0.85);
+  border: 1px solid rgba(109, 220, 145, 0.70);
+  color: #d9ffe5;
+  font-size: 11px;
+  font-weight: 700;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease;
+}
+
+body.coc7ko-item-dragging #coc7ko-stage-overlay .coc7ko-stage-slot.pc.item-drop-hover::after {
+  opacity: 1;
+}
+
+#coc7ko-item-palette .window-content {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+#coc7ko-item-palette .coc7ko-item-palette-root {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+
+  padding: 12px;
+}
+
+#coc7ko-item-palette .item-palette-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 8px;
+}
+
+#coc7ko-item-palette .item-palette-search,
+#coc7ko-item-palette .item-palette-source {
+  width: 100%;
+}
+
+#coc7ko-item-palette .item-palette-hint {
+  margin: 0;
+}
+
+#coc7ko-item-palette .coc7ko-item-grid {
+  min-height: 0;
+  overflow-y: auto;
+
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  grid-auto-rows: 102px;
+  align-content: start;
+  gap: 7px;
+
+  padding: 6px;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.025);
+
+  scrollbar-gutter: stable;
+}
+
+#coc7ko-item-palette .item-palette-card {
+  position: relative;
+  min-width: 0;
+  height: 102px;
+
+  display: grid;
+  grid-template-rows: 56px 23px 15px;
+  gap: 2px;
+
+  padding: 5px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.035);
+
+  cursor: grab;
+  user-select: none;
+}
+
+#coc7ko-item-palette .item-palette-card:hover {
+  border-color: rgba(224, 205, 145, 0.58);
+  background: rgba(224, 205, 145, 0.07);
+}
+
+#coc7ko-item-palette .item-palette-card.dragging {
+  opacity: 0.45;
+}
+
+#coc7ko-item-palette .item-palette-card[hidden] {
+  display: none !important;
+}
+
+#coc7ko-item-palette .item-palette-card > img {
+  width: 56px;
+  height: 56px;
+  justify-self: center;
+
+  object-fit: cover;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+#coc7ko-item-palette .item-palette-name {
+  min-width: 0;
+  overflow: hidden;
+
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+#coc7ko-item-palette .item-palette-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  opacity: 0.55;
+  font-size: 9px;
+  text-align: center;
+}
+
+#coc7ko-item-palette .item-favorite-toggle {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  z-index: 10;
+
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  min-height: 21px;
+  padding: 0;
+  margin: 0;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(12,12,18,0.78);
+  color: rgba(255,255,255,0.74);
+  font-size: 10px;
+}
+
+#coc7ko-item-palette .item-palette-card.favorite .item-favorite-toggle {
+  color: #f2cf68;
+  border-color: rgba(242,207,104,0.55);
+}
+
+#coc7ko-stage-config .coc7ko-item-palette-launch {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+
+  margin: 8px 0 12px;
+  padding: 10px;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.025);
+}
+
+#coc7ko-stage-config .coc7ko-item-palette-launch .hint {
+  margin: 0;
+}
+
+@media (max-width: 650px) {
+  #coc7ko-item-palette .item-palette-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* v0.5.6 Compact hover-only Investigator HUD trigger --------------------- */
+
+#coc7ko-stage-overlay .hud-toggle {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 40;
+
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  min-height: 21px;
+  padding: 0;
+  margin: 0;
+
+  display: grid;
+  place-items: center;
+
+  border: 1px solid rgba(255,255,255,0.24);
+  border-radius: 5px;
+  background: rgba(12,12,18,0.78);
+  color: #f2f2ff;
+  font-size: 10px;
+  line-height: 1;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-2px);
+
+  transition:
+    opacity 110ms ease,
+    transform 110ms ease,
+    visibility 0s linear 110ms;
+}
+
+#coc7ko-stage-overlay .hud-toggle i {
+  margin: 0;
+  font-size: 10px;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot:hover .hud-toggle {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
+
+/* HUD may remain expanded, but its trigger still hides when the card is not hovered. */
+#coc7ko-stage-overlay .coc7ko-stage-slot.hud-open:not(:hover) .hud-toggle {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* NPC HUD is never rendered for players; these are keeper-side safeguards. */
+body:not(.is-gm) #coc7ko-stage-overlay .npc .hud-toggle,
+body:not(.is-gm) #coc7ko-stage-overlay .npc .stats,
+body:not(.is-gm) #coc7ko-stage-overlay .npc .inventory-grid {
+  display: none !important;
+}
+
+/* v0.5.4 Live stage controls --------------------------------------------- */
+
+#coc7ko-stage-config .coc7ko-live-setting .form-fields > input[type="range"] {
+  flex: 1;
+}
+
+#coc7ko-stage-config .coc7ko-live-setting .live-value {
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* v0.5.3 UI stacking fix -------------------------------------------------- */
+
+/*
+ * Do not modify Foundry core UI positioning/z-index globally.
+ * The Stage overlay is appended directly under <body> and z-index:18 is
+ * sufficient to sit above the canvas while staying below Foundry chrome.
+ *
+ * Only interactive Stage surfaces receive pointer events; all unused Stage
+ * space passes through to Foundry normally.
+ */
+#coc7ko-stage-overlay {
+  isolation: isolate;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-root,
+#coc7ko-stage-overlay .coc7ko-stage-character-layer {
+  pointer-events: none;
+}
+
+#coc7ko-stage-overlay .portrait-wrap,
+#coc7ko-stage-overlay .nameplate,
+#coc7ko-stage-overlay .hud-toggle,
+#coc7ko-stage-overlay .stats,
+#coc7ko-stage-overlay .inventory-grid,
+#coc7ko-stage-overlay .item-cell {
+  pointer-events: auto;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-character-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* v0.5.1 NPC Palette ------------------------------------------------------ */
+
+#coc7ko-stage-config .coc7ko-npc-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  grid-auto-rows: 76px;
+  gap: 6px;
+
+  /* Always expose about two full rows before scrolling. */
+  height: 164px;
+  min-height: 164px;
+  max-height: 164px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+
+  padding: 7px;
+  margin-bottom: 14px;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.025);
+
+  scrollbar-width: auto;
+  scrollbar-color: rgba(220,220,230,0.55) rgba(0,0,0,0.20);
+}
+
+#coc7ko-stage-config .coc7ko-npc-palette::-webkit-scrollbar {
+  width: 12px;
+}
+
+#coc7ko-stage-config .coc7ko-npc-palette::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.20);
+  border-radius: 8px;
+}
+
+#coc7ko-stage-config .coc7ko-npc-palette::-webkit-scrollbar-thumb {
+  background: rgba(220,220,230,0.52);
+  border-radius: 8px;
+  border: 2px solid rgba(0,0,0,0.20);
+}
+
+#coc7ko-stage-config .npc-palette-card {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 76px;
+  padding: 4px;
+  display: grid;
+  grid-template-rows: 48px 18px;
+  align-items: center;
+  gap: 2px;
+  border-radius: 7px;
+}
+
+#coc7ko-stage-config .npc-palette-card[hidden] {
+  display: none !important;
+}
+
+#coc7ko-stage-config .npc-palette-card img {
+  width: 48px;
+  height: 48px;
+  justify-self: center;
+  object-fit: cover;
+  object-position: 50% 28%;
+  border-radius: 6px;
+}
+
+#coc7ko-stage-config .npc-palette-card span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 18px;
+  text-align: center;
+}
+
+#coc7ko-stage-config .npc-palette-card.active {
+  outline: 2px solid #d6b85d;
+  background: rgba(214,184,93,0.11);
+}
+
+#coc7ko-stage-config .npc-palette-card > i {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  color: #fbe18c;
+  font-size: 11px;
+  filter: drop-shadow(0 1px 2px #000);
+}
+
+/* Stage Presets ----------------------------------------------------------- */
+
+#coc7ko-stage-config .stage-preset-fieldset {
+  margin: 8px 0 14px;
+}
+
+#coc7ko-stage-config .coc7ko-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+#coc7ko-stage-config .coc7ko-preset-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.035);
+}
+
+#coc7ko-stage-config .preset-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#coc7ko-stage-config .preset-path {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.65;
+  font-size: 11px;
+}
+
+#coc7ko-stage-config .preset-actions {
+  display: flex;
+  gap: 4px;
+}
+
+#coc7ko-stage-config .preset-actions button {
+  width: 34px;
+  min-width: 34px;
+  padding: 4px;
+}
+
+/* v0.2.2 Stage Config scrolling / sticky save ---------------------------- */
+
+/*
+ * ApplicationV2 window-content does not automatically give our hand-built
+ * form a useful scrolling region. Without this, lower PC/NPC rows and the
+ * submit footer can be clipped outside the visible window.
+ */
+#coc7ko-stage-config .window-content,
+#coc7ko-pc-setup .window-content {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+#coc7ko-stage-config .coc7ko-stage-config,
+#coc7ko-pc-setup .coc7ko-stage-config {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 16px 72px;
+  scrollbar-gutter: stable;
+}
+
+/*
+ * Keep Save visible while the long slot list scrolls underneath it.
+ */
+#coc7ko-stage-config .coc7ko-stage-config > .form-footer,
+#coc7ko-pc-setup .coc7ko-stage-config > .form-footer {
+  position: sticky;
+  bottom: -72px;
+  z-index: 20;
+  margin: 18px -16px -72px;
+  padding: 12px 16px;
+  min-height: 58px;
+  background: color-mix(in srgb, var(--color-bg) 94%, transparent);
+  border-top: 1px solid var(--color-border-light-primary);
+  backdrop-filter: blur(8px);
+}
+
+/* Fallback for themes that don't define --color-bg. */
+@supports not (background: color-mix(in srgb, black 50%, transparent)) {
+  #coc7ko-stage-config .coc7ko-stage-config > .form-footer,
+#coc7ko-pc-setup .coc7ko-stage-config > .form-footer {
+    background: rgba(24, 22, 30, 0.96);
+  }
+}
+
+/* Keep the slot columns readable when the config window is narrow. */
+@media (max-width: 760px) {
+  #coc7ko-stage-config .coc7ko-stage-config .slot-grid,
+  #coc7ko-pc-setup .coc7ko-stage-config .slot-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Stage Mode UI cleanup ---------------------------------------------------- */
+
+/*
+ * CoC's VN-style Stage does not need Foundry's RPG macro hotbar in the
+ * center-bottom area. This only applies when the Scene's Stage Mode is on
+ * AND "매크로 바 숨기기" is enabled.
+ */
+body.coc7ko-stage-hide-hotbar #hotbar {
+  display: none !important;
+}
+
+/* The Stage configuration media section spans the full dialog width. */
+.coc7ko-stage-config .stage-media-fieldset {
+  margin: 8px 0 14px;
+}
+
+#coc7ko-stage-overlay {
+  position: fixed;
+  pointer-events: none;
+  z-index: 18;
+  font-family: var(--font-primary);
+
+  /* Foundry UI safe zones inside the canvas area. */
+  /*
+   * Keep-out margins around the Foundry chrome. Left clears the scene control
+   * rail, bottom clears the hotbar plus enough room that a portrait's name
+   * plate is never cut off on a short viewport.
+   */
+  --coc7ko-safe-left: 224px;
+  --coc7ko-safe-right: 104px;
+  --coc7ko-safe-top: 56px;
+  --coc7ko-safe-bottom: 150px;
+
+  /* Side portrait sizing. Full-body transparent PNGs work best. */
+  --coc7ko-card-width: clamp(140px, 12.5vw, 190px);
+  --coc7ko-user-scale: 1;
+}
+
+#coc7ko-stage-overlay.hidden {
+  display: none;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot {
+  position: absolute;
+  /* user-scale is the chosen maximum; fit-scale shrinks it only when needed. */
+  width: calc(var(--coc7ko-card-width) * var(--coc7ko-user-scale) * var(--coc7ko-fit-scale, 1));
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  /* Keep the portrait visually dominant. */
+  background: rgba(10, 10, 16, 0.16);
+  border: 1px solid rgba(230, 230, 255, 0.18);
+  border-radius: 14px;
+  padding: 5px;
+  backdrop-filter: blur(3px);
+  box-shadow: 0 7px 22px rgba(0, 0, 0, 0.28);
+
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    filter 180ms ease,
+    box-shadow 180ms ease;
+
+  overflow: visible;
+  transform-origin: center bottom;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.empty {
+  min-height: 54px;
+  justify-content: center;
+  align-items: center;
+  opacity: 0.22;
+  border-style: dashed;
+  background: rgba(10, 10, 16, 0.12);
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.focused {
+  opacity: 1;
+  z-index: 30;
+  transform: scale(1.06);
+  filter: brightness(1.04);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.48);
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.dimmed {
+  opacity: 0.46;
+  z-index: 5;
+  transform: scale(0.96);
+  filter: grayscale(0.34) brightness(0.68) saturate(0.72);
+}
+
+#coc7ko-stage-overlay .portrait-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 10px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+#coc7ko-stage-overlay .portrait-wrap.mirrored .portrait {
+  transform: scaleX(-1);
+}
+
+#coc7ko-stage-overlay .portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /*
+   * Normalize differently-shaped art into a consistent bust/upper-body crop.
+   * We bias the crop slightly upward so full-body art keeps the face and torso.
+   * This is display-only CSS; source images are never modified.
+   */
+  object-position: 50% 28%;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 8px 10px rgba(0,0,0,0.34));
+}
+
+#coc7ko-stage-overlay .nameplate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: rgba(12, 12, 18, 0.72);
+  font-weight: 700;
+  color: #f2f2ff;
+}
+
+#coc7ko-stage-overlay .speaker-badge {
+  color: #fbe18c;
+  font-size: 11px;
+}
+
+/*
+ * The HUD collapses for background speakers.
+ * It expands for the focused speaker or while the user hovers the portrait.
+ * This leaves room for six larger portraits without permanently stacking
+ * six 2x5 inventories on the stage.
+ */
+#coc7ko-stage-overlay .stats,
+#coc7ko-stage-overlay .inventory-grid {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+  pointer-events: none;
+  transition:
+    opacity 140ms ease,
+    max-height 180ms ease,
+    margin 180ms ease;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.hud-open .stats,
+#coc7ko-stage-overlay .coc7ko-stage-slot.hud-open .inventory-grid {
+  opacity: 1;
+  max-height: 150px;
+  pointer-events: auto;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.hud-open .stats {
+  margin-top: 1px;
+}
+
+#coc7ko-stage-overlay .stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 5px;
+  padding: 0 5px;
+  font-size: 11px;
+  color: #ebebff;
+  text-shadow: 0 1px 2px #000;
+}
+
+#coc7ko-stage-overlay .inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+#coc7ko-stage-overlay .item-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+#coc7ko-stage-overlay .item-cell.quest {
+  outline: 1px solid #f3d36a;
+  box-shadow: 0 0 7px rgba(243, 211, 106, 0.34);
+}
+
+#coc7ko-stage-overlay .item-cell.empty {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#coc7ko-stage-overlay .item-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#coc7ko-stage-overlay .item-cell .qty {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font-size: 10px;
+  color: white;
+  text-shadow: 0 1px 2px black;
+}
+
+#coc7ko-stage-overlay .empty-label {
+  color: white;
+  font-size: 11px;
+}
+
+/* Six PC anchors, now relative to the ACTUAL canvas viewport, not the browser window. */
+#coc7ko-stage-overlay .pc1 {
+  left: var(--coc7ko-safe-left);
+  top: var(--coc7ko-safe-top);
+  transform-origin: left top;
+}
+#coc7ko-stage-overlay .pc2 {
+  right: var(--coc7ko-safe-right);
+  top: var(--coc7ko-safe-top);
+  transform-origin: right top;
+}
+/*
+ * The middle row is placed by the script at the centre of the space between
+ * the top and bottom rows. The 50% fallback only applies before the first
+ * measurement.
+ */
+#coc7ko-stage-overlay .pc3 {
+  left: var(--coc7ko-safe-left);
+  top: var(--coc7ko-mid-top, 50%);
+  translate: 0 var(--coc7ko-mid-shift, -50%);
+  transform-origin: left center;
+}
+#coc7ko-stage-overlay .pc4 {
+  right: var(--coc7ko-safe-right);
+  top: var(--coc7ko-mid-top, 50%);
+  translate: 0 var(--coc7ko-mid-shift, -50%);
+  transform-origin: right center;
+}
+/*
+ * The bottom pair sits higher than the NPC block so the two never collide
+ * when four NPCs are on stage stacked two rows deep.
+ */
+#coc7ko-stage-overlay .pc5 {
+  left: var(--coc7ko-safe-left);
+  bottom: calc(var(--coc7ko-safe-bottom) + 40px);
+  transform-origin: left bottom;
+}
+#coc7ko-stage-overlay .pc6 {
+  right: var(--coc7ko-safe-right);
+  bottom: calc(var(--coc7ko-safe-bottom) + 40px);
+  transform-origin: right bottom;
+}
+
+/* NPCs occupy the lower center and stay clear of the Foundry hotbar. */
+/*
+ * NPCs form a block at the bottom centre. The script supplies the translate
+ * for each occupied seat, so one NPC sits centred, two sit side by side,
+ * three form a triangle and four form a square — with no gaps for the seats
+ * that are empty.
+ */
+#coc7ko-stage-overlay .npc1,
+#coc7ko-stage-overlay .npc2,
+#coc7ko-stage-overlay .npc3,
+#coc7ko-stage-overlay .npc4 {
+  left: 50%;
+  bottom: var(--coc7ko-safe-bottom);
+  translate: -50% 0;
+  transform-origin: center bottom;
+}
+
+/* On a narrow canvas, reduce portrait footprint automatically. */
+@media (max-width: 1050px) {
+  #coc7ko-stage-overlay {
+    --coc7ko-card-width: clamp(118px, 15vw, 155px);
+    --coc7ko-safe-left: 54px;
+    --coc7ko-safe-right: 54px;
+  }
+
+  #coc7ko-stage-overlay .nameplate {
+    font-size: 11px;
+  }
+
+  #coc7ko-stage-overlay .stats {
+    font-size: 10px;
+  }
+}
+
+.coc7ko-stage-config .slot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.coc7ko-stage-config .slot-fieldset {
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.coc7ko-stage-config .slot-fieldset legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.coc7ko-stage-config .form-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+
+/* v0.2.3: only meaningful portrait/HUD surfaces intercept pointer input. */
+#coc7ko-stage-overlay .nameplate,
+#coc7ko-stage-overlay .stats,
+#coc7ko-stage-overlay .inventory-grid,
+#coc7ko-stage-overlay .item-cell {
+  pointer-events: auto;
+}
+
+/*
+ * Foundry controls remain authoritative even if a portrait visually approaches them.
+ * The Stage overlay itself uses a lower z-index, and JS additionally moves left-side
+ * portraits beyond the currently-open Scene Controls palette.
+ */
+
+/* ==========================================================================
+ * v0.7.0 | Free-form portrait layout, speech bubbles, split palettes
+ * ========================================================================== */
+
+/* --- Custom slot anchors --------------------------------------------------
+ * A slot with a stored layout receives inline left/top/width. These rules
+ * neutralise the legacy pc1..npc4 anchors so the inline values win cleanly.
+ */
+/* Hand-placed cards keep exactly the size the keeper gave them. */
+#coc7ko-stage-overlay .coc7ko-stage-slot.positioned {
+  --coc7ko-fit-scale: 1;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.positioned {
+  right: auto;
+  bottom: auto;
+  translate: none;
+  transform-origin: center center;
+}
+
+/* --- Layout editing ------------------------------------------------------ */
+
+#coc7ko-stage-overlay .coc7ko-stage-root.layout-editing {
+  pointer-events: none;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.layout-editing {
+  pointer-events: auto;
+  cursor: grab;
+  outline: 2px dashed rgba(240, 214, 130, 0.75);
+  outline-offset: 2px;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+  transition: none;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.layout-editing.empty {
+  opacity: 0.75 !important;
+  min-height: 92px;
+}
+
+#coc7ko-stage-overlay .coc7ko-stage-slot.layout-active {
+  cursor: grabbing;
+  outline-color: #ffe9a3;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  z-index: 80;
+}
+
+#coc7ko-stage-overlay .layout-grip {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  z-index: 70;
+
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(20, 20, 26, 0.9);
+  background:
+    linear-gradient(135deg, transparent 42%, rgba(20, 20, 26, 0.85) 42%, rgba(20, 20, 26, 0.85) 56%, transparent 56%),
+    #f0d682;
+
+  cursor: nwse-resize;
+  pointer-events: auto;
+}
+
+#coc7ko-stage-overlay .coc7ko-layout-toolbar {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  translate: -50% 0;
+  z-index: 90;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(240, 214, 130, 0.55);
+  background: rgba(14, 14, 20, 0.92);
+  color: #f4f4ff;
+  font-size: 12px;
+
+  pointer-events: auto;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+#coc7ko-stage-overlay .coc7ko-layout-toolbar button {
+  width: auto;
+  min-width: 0;
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+#coc7ko-stage-overlay .coc7ko-layout-toolbar .layout-hint {
+  opacity: 0.85;
+}
+
+/* --- Speech bubbles ------------------------------------------------------ */
+
+#coc7ko-stage-overlay .coc7ko-speech-bubble {
+  position: absolute;
+  z-index: 75;
+
+  width: max-content;
+  max-width: min(320px, 78vw);
+  padding: 8px 12px;
+
+  border-radius: 13px;
+  border: none;
+  background: var(--coc7ko-surface, #f5f3ef);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  color: var(--coc7ko-text, #24242a);
+  font-family: var(--coc7ko-chat-font, var(--font-primary));
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+
+  pointer-events: none;
+  animation: coc7ko-bubble-in 140ms ease-out;
+}
+
+/* --- Bubble direction ---------------------------------------------------- */
+
+#coc7ko-stage-overlay .coc7ko-speech-bubble::after {
+  content: "";
+  position: absolute;
+  border: 8px solid transparent;
+}
+
+/* Portrait on the left edge: speak to the right. */
+#coc7ko-stage-overlay .coc7ko-speech-bubble.bubble-right {
+  left: calc(100% + 14px);
+  top: 26%;
+  max-width: min(300px, 32vw);
+}
+
+#coc7ko-stage-overlay .coc7ko-speech-bubble.bubble-right::after {
+  right: 100%;
+  top: 18px;
+  border-right-color: var(--coc7ko-surface, #f5f3ef);
+}
+
+/* Portrait on the right edge: speak to the left. */
+#coc7ko-stage-overlay .coc7ko-speech-bubble.bubble-left {
+  right: calc(100% + 14px);
+  top: 26%;
+  max-width: min(300px, 32vw);
+}
+
+#coc7ko-stage-overlay .coc7ko-speech-bubble.bubble-left::after {
+  left: 100%;
+  top: 18px;
+  border-left-color: var(--coc7ko-surface, #f5f3ef);
+}
+
+/* Bottom row: speak upwards. */
+#coc7ko-stage-overlay .coc7ko-speech-bubble.bubble-up {
+  left: 50%;
+  bottom: calc(100% + 12px);
+  translate: -50% 0;
+}
+
+#coc7ko-stage-overlay .coc7ko-speech-bubble.bubble-up::after {
+  left: 50%;
+  top: 100%;
+  translate: -50% 0;
+  border-top-color: var(--coc7ko-surface, #f5f3ef);
+}
+
+@keyframes coc7ko-bubble-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Config launchers ---------------------------------------------------- */
+
+#coc7ko-stage-config .coc7ko-palette-launchers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+
+  margin: 8px 0 12px;
+  padding: 10px;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+#coc7ko-stage-config .coc7ko-palette-launchers button {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+#coc7ko-stage-config .coc7ko-palette-launchers .hint {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* --- Standalone NPC palette window --------------------------------------- */
+
+#coc7ko-npc-palette .window-content {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+#coc7ko-npc-palette .coc7ko-npc-palette-root {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 12px;
+}
+
+#coc7ko-npc-palette .npc-palette-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 120px;
+  gap: 8px;
+}
+
+#coc7ko-npc-palette .npc-palette-hint {
+  margin: 0;
+}
+
+/* The standalone window fills its own height instead of the old fixed strip. */
+#coc7ko-npc-palette .coc7ko-npc-palette {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  margin-bottom: 0;
+
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  grid-auto-rows: 86px;
+  align-content: start;
+  gap: 7px;
+
+  overflow-y: auto;
+  padding: 7px;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  scrollbar-gutter: stable;
+}
+
+#coc7ko-npc-palette .npc-palette-card {
+  position: relative;
+  min-width: 0;
+  height: 86px;
+  padding: 4px;
+
+  display: grid;
+  grid-template-rows: 54px 18px;
+  align-items: center;
+  gap: 2px;
+
+  border-radius: 7px;
+}
+
+#coc7ko-npc-palette .npc-palette-card[hidden] { display: none !important; }
+
+#coc7ko-npc-palette .npc-palette-card img {
+  width: 54px;
+  height: 54px;
+  justify-self: center;
+  object-fit: cover;
+  object-position: 50% 28%;
+  border-radius: 6px;
+}
+
+#coc7ko-npc-palette .npc-palette-card span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 18px;
+  text-align: center;
+}
+
+#coc7ko-npc-palette .npc-palette-card.active {
+  outline: 2px solid #d6b85d;
+  background: rgba(214, 184, 93, 0.11);
+}
+
+#coc7ko-npc-palette .npc-palette-card > i {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  color: #fbe18c;
+  font-size: 11px;
+  filter: drop-shadow(0 1px 2px #000);
+}
+
+/* --- Larger, more obvious resize handle on our ApplicationV2 windows ------ */
+
+#coc7ko-stage-config .window-resize-handle,
+#coc7ko-pc-setup .window-resize-handle,
+#coc7ko-item-palette .window-resize-handle,
+#coc7ko-npc-palette .window-resize-handle {
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+}
+
+/* A portrait with an active speech bubble is never dimmed behind the speaker. */
+#coc7ko-stage-overlay .coc7ko-stage-slot.speaking {
+  opacity: 1;
+  filter: none;
+  z-index: 60;
+}
+
+
+/* Folder filter in the item palette toolbar. */
+#coc7ko-item-palette .item-palette-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr);
+  gap: 8px;
+}
