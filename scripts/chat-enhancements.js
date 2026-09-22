@@ -838,32 +838,69 @@ function typingText(names) {
   return `${names.join(", ")}님이 입력 중입니다`;
 }
 
+/*
+ * Where the line lives: INSIDE the chat input form.
+ *
+ * Placement follows Cautious Gamemaster's Pack (MIT, cs96and/FoundryVTT-CGMP),
+ * which appends its notice to `.chat-form` and has been working on this very
+ * setup. Since v13 Foundry moves that form between the sidebar and the
+ * floating spot at the bottom right when the sidebar is collapsed; a line
+ * inside the form travels with it. The earlier attempts placed the line next
+ * to the form, where it stayed behind in the hidden sidebar.
+ *
+ * The line keeps its height even when empty (the reserved height setting),
+ * so its text appearing and disappearing never moves the chat log.
+ */
+const TYPING_FORM_SELECTOR = "#chat-form, .chat-form";
+
+function typingLines() {
+  const lines = [];
+  for (const form of document.querySelectorAll(TYPING_FORM_SELECTOR)) {
+    // Skip a form nested in another match; one line per input.
+    if (form.parentElement?.closest(TYPING_FORM_SELECTOR)) continue;
+
+    let line = form.querySelector(":scope > .coc7ko-typing-line");
+    if (!line) {
+      line = document.createElement("div");
+      line.className = "coc7ko-typing-line";
+      form.prepend(line);
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
 function renderTyping() {
   const names = [...typingUsers.keys()]
-    .map(id => game.users.get(id)?.name)
+    .map(id => (id === "__coc7ko_test__" ? "테스트" : game.users.get(id)?.name))
     .filter(Boolean);
   const text = typingText(names);
 
-  for (const reserve of document.querySelectorAll(".coc7ko-typing-reserve")) {
-    let node = reserve.querySelector(":scope > .coc7ko-typing-text");
+  // Leftovers from 1.2.2 (lines placed beside the form).
+  document.querySelectorAll(".coc7ko-typing-float").forEach(node => node.remove());
 
-    if (!text) {
-      node?.remove();
-      continue;
-    }
+  document.body.classList.toggle("coc7ko-typing-builtin", typingEnabled());
 
-    if (!node) {
-      node = document.createElement("div");
-      node.className = "coc7ko-typing-text";
-      reserve.append(node);
-    }
+  for (const line of typingLines()) {
+    line.classList.toggle("active", !!text);
+    line.innerHTML = text
+      ? `<span class="dots"><i></i><i></i><i></i></span><span>${foundry.utils.escapeHTML(text)}</span>`
+      : "";
+  }
+}
 
-    node.innerHTML = `<span>${foundry.utils.escapeHTML(text)}</span><span class="dots"><i></i><i></i><i></i></span>`;
+/** CGMP's own typing notice is on: stay out of its way. */
+function cgmpTypingActive() {
+  if (!game.modules.get("CautiousGamemastersPack")?.active) return false;
+  try {
+    return !!game.settings.get("CautiousGamemastersPack", "notifyTyping");
+  } catch (_) {
+    return false;
   }
 }
 
 function typingEnabled() {
-  return !!setting("typingIndicator", true);
+  return !!setting("typingIndicator", true) && !cgmpTypingActive();
 }
 
 function sendTyping(typing) {
@@ -878,17 +915,27 @@ function stopTyping() {
   sendTyping(false);
 }
 
-/** The chat input under an event target, or null for any other editor. */
+/**
+ * The chat input under an event target, or null for any other editor.
+ * `#chat-message` is the chat box in v13/v14 (a textarea or a rich editor);
+ * the broader check remains as a fallback.
+ */
 function chatField(target) {
+  const direct = target?.closest?.("#chat-message");
+  if (direct) return direct;
+
   const field = target?.closest?.("textarea, [contenteditable='true'], [contenteditable='']");
   if (!field) return null;
-  if (!field.closest([...CHAT_ROOT_SELECTORS, "#chat-notifications"].join(","))) return null;
+  if (!field.closest([...CHAT_ROOT_SELECTORS, "#chat-notifications", TYPING_FORM_SELECTOR].join(","))) return null;
   if (field.closest(".coc7ko-side-panel")) return null;
   return field;
 }
 
 function fieldText(field) {
-  return String(field.value ?? field.innerText ?? field.textContent ?? "").trim();
+  if (typeof field.value === "string") return field.value.trim();
+  // A rich editor host also contains its toolbar; read the editable part only.
+  const editable = field.matches?.("[contenteditable]") ? field : field.querySelector?.("[contenteditable]");
+  return String((editable ?? field).innerText ?? (editable ?? field).textContent ?? "").trim();
 }
 
 function onChatInput(event) {
@@ -932,10 +979,44 @@ function receiveTyping(payload) {
 }
 
 Hooks.once("ready", () => {
+  /*
+   * Console helpers for checking the feature at the table:
+   *   game.coc7koTyping.test()    shows a sample line here for 4 s — if this
+   *                               appears, the display side works;
+   *   game.coc7koTyping.status()  shows what this client knows.
+   */
+  game.coc7koTyping = {
+    test() {
+      const id = "__coc7ko_test__";
+      clearTimeout(typingUsers.get(id));
+      typingUsers.set(id, setTimeout(() => { typingUsers.delete(id); renderTyping(); }, 4000));
+      renderTyping();
+      return "입력창 위에 '테스트님이 입력 중입니다'가 4초간 보이면 표시 쪽은 정상입니다.";
+    },
+    status() {
+      return {
+        enabled: typingEnabled(),
+        keeperShown: !!setting("typingShowKeeper", false),
+        chatForms: typingLines().length,
+        chatBoxFound: !!document.querySelector("#chat-message"),
+        deferringToCGMP: cgmpTypingActive(),
+        typingNow: [...typingUsers.keys()],
+        socketDeclared: !!game.modules.get(MODULE_ID)?.socket
+      };
+    }
+  };
+
   game.socket.on(TYPING_SOCKET, receiveTyping);
   document.addEventListener("input", onChatInput, true);
+  document.addEventListener("keyup", onChatInput, true);
   document.addEventListener("focusout", onChatBlur, true);
 });
+
+Hooks.on("renderChatLog", () => setTimeout(renderTyping, 50));
+
+// The chat input moves when the sidebar collapses or expands.
+Hooks.on("collapseSidebar", () => setTimeout(renderTyping, 50));
+Hooks.on("changeSidebarTab", () => setTimeout(renderTyping, 50));
 
 // Sending a message ends "typing" at once, for the sender and for everyone.
 Hooks.on("createChatMessage", message => {

@@ -477,3 +477,60 @@ img.coc7ko-avatar {
 @media (prefers-reduced-motion: reduce) {
   .coc7ko-typing-reserve .coc7ko-typing-text .dots i { animation: none; opacity: 0.6; }
 }
+
+/*
+ * The typing line inside the chat form (placement after Cautious Gamemaster's
+ * Pack). The form becomes a column only when it holds our line — the same
+ * rule CGMP applies — so the line stacks above the chat box. The line keeps a
+ * fixed height, so text appearing never shifts the chat log.
+ */
+:is(#chat-form, .chat-form):has(> .coc7ko-typing-line) {
+  display: flex;
+  flex-direction: column;
+}
+
+.coc7ko-typing-line {
+  flex: 0 0 var(--coc7ko-typing-reserve, 26px);
+  height: var(--coc7ko-typing-reserve, 26px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0 6px;
+  overflow: hidden;
+  font-size: 12px;
+  font-style: italic;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.coc7ko-typing-line:not(.active) {
+  visibility: hidden;
+}
+
+.coc7ko-typing-line .dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.coc7ko-typing-line .dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: coc7ko-typing-dot 1.2s infinite ease-in-out;
+}
+
+.coc7ko-typing-line .dots i:nth-child(2) { animation-delay: 0.2s; }
+.coc7ko-typing-line .dots i:nth-child(3) { animation-delay: 0.4s; }
+
+/* The line inside the form now does the reserving; the old strip would double it. */
+body.coc7ko-typing-builtin .coc7ko-typing-reserve {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coc7ko-typing-line .dots i { animation: none; opacity: 0.6; }
+}

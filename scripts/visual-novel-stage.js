@@ -124,9 +124,16 @@ function chatMessageToSpeech(message, limit = 160) {
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
+/*
+ * stageMode defaults to ON: a scene the keeper has never configured shows the
+ * stage straight away. A scene where the keeper turned it off keeps that
+ * choice, because the stored flag overrides this default.
+ */
 const DEFAULT_FLAGS = {
-  stageMode: false,
-  hideHotbar: true,
+  stageMode: true,
+  // Off by default now that the stage is on everywhere: hiding the macro bar
+  // on every scene would look like it had simply vanished.
+  hideHotbar: false,
   npcHudMode: "gm",
   focusedSlot: null,
   media: {
@@ -1217,9 +1224,16 @@ class Coc7KoStageOverlay {
         // While arranging the layout, empty slots stay draggable so the keeper
         // can pre-build a seating plan before the cast is assigned.
         if (!editing) {
-          // An unused NPC seat would otherwise leave a grey placeholder in
-          // the middle of the stage, so it is simply not drawn.
-          if (slotDef.group === "npc") return "";
+          /*
+           * Unused seats are not drawn at all outside layout editing. With
+           * the stage on by default, faint "PC 3"-style placeholders would
+           * otherwise be scattered over every scene.
+           */
+          if (slotDef.group === "npc" || !slot.visible) return "";
+
+          // A seat that is assigned but whose actor is missing is a setup
+          // problem only the keeper can fix, so only the keeper sees it.
+          if (!game.user.isGM) return "";
 
           const reason = !slot.visible
             ? `${slotDef.label}`
