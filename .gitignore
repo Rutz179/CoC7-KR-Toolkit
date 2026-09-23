@@ -3,3 +3,7 @@ node_modules/
 *.env
 package-lock.json
 .DS_Store
+
+# 광기표는 룰북에서 옮겨 번역한 내용이라 배포본에 포함하지 않습니다.
+# 개인용 모듈(coc7-ko-local)로 따로 보관하세요.
+packs/ko-sanity-tables/

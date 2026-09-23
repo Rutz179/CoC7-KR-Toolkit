@@ -54,6 +54,7 @@ jobs:
                "*node_modules*" "*package-lock.json" \
                "*.env" \
                "*/LOG" "*/LOG.old" \
+               "*packs/ko-sanity-tables*" \
                ".gitignore" ".DS_Store" "*/.DS_Store"
           echo "--- package contents (without packs) ---"
           unzip -l module.zip | grep -v "/packs/"
