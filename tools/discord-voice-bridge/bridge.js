@@ -7,16 +7,16 @@
  *
  * Configuration (environment variables):
  *   DISCORD_TOKEN      bot token from the Discord developer portal
- *   GUILD_ID           server id
- *   VOICE_CHANNEL_ID   the voice channel your table uses
+ *   GUILD_ID           optional; first server to use (chosen in Foundry later)
+ *   VOICE_CHANNEL_ID   optional; first voice channel to use
  *   PORT               WebSocket port (default 8787)
  *   SHARED_KEY         optional; clients must connect with ?key=<value>
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join as joinPath } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Client, Events, GatewayIntentBits } from "discord.js";
+import { ChannelType, Client, Events, GatewayIntentBits } from "discord.js";
 import { joinVoiceChannel, VoiceConnectionStatus, entersState } from "@discordjs/voice";
 import { WebSocketServer } from "ws";
 
@@ -61,12 +61,44 @@ const {
   SHARED_KEY = ""
 } = process.env;
 
-for (const [name, value] of Object.entries({ DISCORD_TOKEN, GUILD_ID, VOICE_CHANNEL_ID })) {
-  if (!value) {
-    console.error(`Missing setting: ${name}. Create a .env file next to bridge.js (the setup wizard shows how).`);
-    process.exit(1);
+if (!DISCORD_TOKEN) {
+  console.error("Missing setting: DISCORD_TOKEN. Create a .env file next to bridge.js (the setup wizard shows how).");
+  process.exit(1);
+}
+
+/*
+ * Which voice channel to listen to is chosen from inside Foundry, not from
+ * this file: one table runs several Discord servers and rooms, and editing
+ * .env before every session was the worst part of using this.
+ *
+ * GUILD_ID / VOICE_CHANNEL_ID, if present, only provide the starting choice.
+ * The last channel picked in Foundry is remembered in channel.json beside this
+ * script, so a restart comes back to the same room — but the bot only rejoins
+ * on its own if it was in a channel when it stopped.
+ */
+const STATE_FILE = joinPath(dirname(fileURLToPath(import.meta.url)), "channel.json");
+
+function loadState() {
+  try {
+    return JSON.parse(readFileSync(STATE_FILE, "utf8"));
+  } catch {
+    return {
+      guildId: GUILD_ID ?? null,
+      channelId: VOICE_CHANNEL_ID ?? null,
+      joined: !!(GUILD_ID && VOICE_CHANNEL_ID)
+    };
   }
 }
+
+function saveState() {
+  try {
+    writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  } catch (error) {
+    console.warn("Could not save channel.json:", error.message);
+  }
+}
+
+const state = loadState();
 
 /* --- WebSocket side -------------------------------------------------------- */
 
@@ -81,7 +113,69 @@ wss.on("connection", (socket, request) => {
     }
   }
   console.log(`Foundry client connected (${wss.clients.size} total)`);
+
+  // Tell the newcomer where the bot stands and what rooms it can see.
+  sendStatus(socket);
+  sendChannelList(socket).catch(error => console.warn("Channel list failed:", error.message));
+
+  /*
+   * Commands from Foundry. Anyone reaching this point already passed the
+   * shared key; the module only shows these controls to a keeper.
+   */
+  socket.on("message", async raw => {
+    let command;
+    try {
+      command = JSON.parse(String(raw));
+    } catch {
+      return;
+    }
+
+    try {
+      if (command.type === "listChannels") await sendChannelList(socket);
+      if (command.type === "join") await join(command.guildId, command.channelId);
+      if (command.type === "leave") leave();
+    } catch (error) {
+      console.warn(`Command ${command?.type} failed:`, error.message);
+      socket.send(JSON.stringify({ type: "error", message: String(error.message ?? error) }));
+    }
+  });
 });
+
+async function sendChannelList(socket) {
+  if (!client.isReady()) return;
+
+  const guilds = [];
+  for (const [, partial] of await client.guilds.fetch()) {
+    const guild = await partial.fetch();
+    const channels = (await guild.channels.fetch())
+      .filter(channel => channel?.type === ChannelType.GuildVoice)
+      .map(channel => ({ id: channel.id, name: channel.name }));
+
+    if (channels.length) guilds.push({ id: guild.id, name: guild.name, channels });
+  }
+
+  socket.send(JSON.stringify({ type: "channels", guilds }));
+}
+
+function statusMessage() {
+  return {
+    type: "status",
+    joined: !!connection,
+    guildId: state.guildId,
+    channelId: state.channelId,
+    guildName: state.guildName ?? null,
+    channelName: state.channelName ?? null
+  };
+}
+
+function sendStatus(socket) {
+  const data = JSON.stringify(statusMessage());
+  if (socket) {
+    if (socket.readyState === 1) socket.send(data);
+    return;
+  }
+  broadcast(statusMessage());
+}
 
 function broadcast(message) {
   const data = JSON.stringify(message);
@@ -119,12 +213,37 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates]
 });
 
-async function join() {
-  const guild = await client.guilds.fetch(GUILD_ID);
+let connection = null;
 
-  const connection = joinVoiceChannel({
-    channelId: VOICE_CHANNEL_ID,
-    guildId: GUILD_ID,
+/** Stops listening and clears every highlight, without stopping the process. */
+function leave({ remember = true } = {}) {
+  for (const discordId of [...speaking]) markSpeaking(discordId, false);
+
+  connection?.destroy();
+  connection = null;
+
+  if (remember) {
+    state.joined = false;
+    saveState();
+  }
+
+  console.log("Left the voice channel.");
+  sendStatus();
+}
+
+async function join(guildId = state.guildId, channelId = state.channelId) {
+  if (!guildId || !channelId) throw new Error("No voice channel chosen yet.");
+
+  // Switching rooms: drop the old connection first, keeping the memory of
+  // where we are heading.
+  if (connection) leave({ remember: false });
+
+  const guild = await client.guilds.fetch(guildId);
+  const channel = await guild.channels.fetch(channelId);
+
+  connection = joinVoiceChannel({
+    channelId,
+    guildId,
     adapterCreator: guild.voiceAdapterCreator,
     // Speaking events are only delivered to a member that is not deafened.
     selfDeaf: false,
@@ -132,7 +251,17 @@ async function join() {
   });
 
   await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-  console.log("Joined voice channel; relaying speaking events.");
+  console.log(`Joined ${guild.name} / ${channel?.name ?? channelId}; relaying speaking events.`);
+
+  Object.assign(state, {
+    guildId,
+    channelId,
+    guildName: guild.name,
+    channelName: channel?.name ?? null,
+    joined: true
+  });
+  saveState();
+  sendStatus();
 
   connection.receiver.speaking.on("start", userId => markSpeaking(userId, true));
   connection.receiver.speaking.on("end", userId => markSpeaking(userId, false));
@@ -145,15 +274,17 @@ async function join() {
         entersState(connection, VoiceConnectionStatus.Connecting, 5_000)
       ]);
     } catch {
-      connection.destroy();
-      setTimeout(() => join().catch(console.error), 5_000);
+      connection?.destroy();
+      connection = null;
+      // Only come back if we are still meant to be in a channel.
+      if (state.joined) setTimeout(() => join().catch(console.error), 5_000);
     }
   });
 }
 
 // Someone leaving or moving channel while talking never sends "end".
 client.on(Events.VoiceStateUpdate, (before, after) => {
-  if (before.channelId === VOICE_CHANNEL_ID && after.channelId !== VOICE_CHANNEL_ID) {
+  if (before.channelId === state.channelId && after.channelId !== state.channelId) {
     if (speaking.has(before.id)) markSpeaking(before.id, false);
   }
 });
@@ -167,9 +298,17 @@ const READY_EVENT = Object.values(Events).includes("clientReady") ? "clientReady
 
 client.once(READY_EVENT, () => {
   console.log(`Logged in as ${client.user.tag}. WebSocket on :${PORT}`);
+
+  if (!state.joined || !state.guildId || !state.channelId) {
+    console.log("Waiting: choose a voice channel from Foundry (모듈 설정 → 연결 관리).");
+    return;
+  }
+
   join().catch(error => {
-    console.error("Could not join the voice channel:", error);
-    process.exit(1);
+    // A room that has gone away must not take the whole bridge down with it.
+    console.error("Could not rejoin the last voice channel:", error.message);
+    state.joined = false;
+    saveState();
   });
 });
 

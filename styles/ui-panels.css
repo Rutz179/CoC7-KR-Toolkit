@@ -977,3 +977,29 @@
   color: #9fe0b6;
   font-size: 11.5px;
 }
+
+/* --- voice channel picker in the mapping window -------------------------- */
+
+.vmap-channel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.vmap-channel-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.vmap-channel-actions button {
+  width: auto;
+  flex: 0 1 auto;
+}
+
+.vmap-channel-actions button:last-child {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0 10px;
+}

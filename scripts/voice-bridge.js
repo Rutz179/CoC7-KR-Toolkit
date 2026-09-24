@@ -42,6 +42,24 @@ let retryTimer = null;
 let intentionalClose = false;
 let userMap = new Map();
 
+/*
+ * The bot's voice channel is chosen here, not in the server's .env: tables
+ * that run several Discord servers and rooms should not have to edit a file
+ * and restart between sessions. The bridge sends the rooms it can see and its
+ * current position; the keeper picks one, or tells it to leave.
+ */
+let voiceGuilds = [];
+let voiceStatus = { joined: false, guildId: null, channelId: null, guildName: null, channelName: null };
+
+function sendBridgeCommand(command) {
+  if (socket?.readyState !== WebSocket.OPEN) {
+    ui.notifications.warn("CoC7-KO | 브리지에 연결되어 있지 않습니다.");
+    return false;
+  }
+  socket.send(JSON.stringify(command));
+  return true;
+}
+
 const RELAY_SOCKET = `module.${MODULE_ID}`;
 
 /** The one keeper client responsible for talking to the bridge. */
@@ -200,6 +218,24 @@ function connect({ manual = false } = {}) {
       return;
     }
 
+    if (payload?.type === "channels") {
+      voiceGuilds = Array.isArray(payload.guilds) ? payload.guilds : [];
+      Coc7KoVoiceMappingApp.refreshOpen();
+      return;
+    }
+
+    if (payload?.type === "status") {
+      voiceStatus = payload;
+      if (!payload.joined) game.coc7koStage?.clearSpeaking?.();
+      Coc7KoVoiceMappingApp.refreshOpen();
+      return;
+    }
+
+    if (payload?.type === "error") {
+      ui.notifications.warn(`CoC7-KO | 브리지: ${payload.message}`);
+      return;
+    }
+
     if (payload?.type !== "speaking") return;
 
     const discordId = String(payload.discordId);
@@ -213,6 +249,7 @@ function connect({ manual = false } = {}) {
   });
 
   socket.addEventListener("close", () => {
+    voiceStatus = { joined: false, guildId: null, channelId: null, guildName: null, channelName: null };
     socket = null;
 
     // A dropped bridge must not leave portraits lit on anyone's screen.
@@ -337,6 +374,8 @@ class Coc7KoVoiceMappingApp extends foundry.applications.api.ApplicationV2 {
         </div>
 
         <div class="vmap-heard">
+          ${this._channelSection()}
+
           <h4>최근 음성 신호</h4>
           <p class="hint">
             브리지가 연결된 상태에서 음성 채널에 말해 보세요. 들린 디스코드 ID가 여기 나타나며,
@@ -350,6 +389,55 @@ class Coc7KoVoiceMappingApp extends foundry.applications.api.ApplicationV2 {
           <button type="button" data-action="save" class="primary"><i class="fa-solid fa-floppy-disk"></i> 저장</button>
         </footer>
       </div>
+    `;
+  }
+
+  /** Room picker: where the bot listens, and whether it is in a room at all. */
+  _channelSection() {
+    if (!game.user.isGM) return "";
+
+    // Remember what the keeper picked; a re-render must not snap it back to
+    // the server the bot happens to be in right now.
+    const guildId = this._pickedGuild ?? voiceStatus.guildId ?? voiceGuilds[0]?.id ?? "";
+    const guild = voiceGuilds.find(item => item.id === guildId) ?? voiceGuilds[0];
+
+    const guildOptions = voiceGuilds.map(item =>
+      `<option value="${item.id}" ${item.id === guild?.id ? "selected" : ""}>${foundry.utils.escapeHTML(item.name)}</option>`
+    ).join("");
+
+    const channelOptions = (guild?.channels ?? []).map(channel =>
+      `<option value="${channel.id}" ${channel.id === voiceStatus.channelId ? "selected" : ""}>${foundry.utils.escapeHTML(channel.name)}</option>`
+    ).join("");
+
+    const where = voiceStatus.joined
+      ? `<b>${foundry.utils.escapeHTML(voiceStatus.guildName ?? "")} / ${foundry.utils.escapeHTML(voiceStatus.channelName ?? "")}</b> 에서 듣는 중`
+      : "지금은 어느 음성 채널에도 들어가 있지 않습니다.";
+
+    return `
+      <h4>음성 채널</h4>
+      <p class="hint">${where}</p>
+
+      ${voiceGuilds.length ? `
+        <div class="vmap-channel">
+          <select name="guildId">${guildOptions}</select>
+          <select name="channelId">${channelOptions}</select>
+        </div>
+        <div class="vmap-channel-actions">
+          <button type="button" data-action="joinVoice" class="primary">
+            <i class="fa-solid fa-headphones"></i> ${voiceStatus.joined ? "이 방으로 옮기기" : "이 방에서 듣기"}
+          </button>
+          <button type="button" data-action="leaveVoice" ${voiceStatus.joined ? "" : "disabled"}>
+            <i class="fa-solid fa-right-from-bracket"></i> 나가기
+          </button>
+          <button type="button" data-action="refreshChannels" title="채널 목록 새로 고침">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+        <p class="hint">
+          세션을 안 할 때는 <b>나가기</b>를 눌러 두세요. 봇이 음성 채널에서 빠지고, 다음에 다시
+          누르면 그 자리로 돌아옵니다. 서버에서 프로그램을 껐다 켤 필요가 없습니다.
+        </p>
+      ` : `<p class="hint">연결되면 봇이 볼 수 있는 음성 채널 목록이 여기 나타납니다.</p>`}
     `;
   }
 
@@ -398,7 +486,23 @@ class Coc7KoVoiceMappingApp extends foundry.applications.api.ApplicationV2 {
 
       if (action === "reconnect") return connect({ manual: true });
 
+      if (action === "refreshChannels") return sendBridgeCommand({ type: "listChannels" });
+
+      if (action === "joinVoice") {
+        const guildId = content.querySelector("select[name='guildId']")?.value;
+        const channelId = content.querySelector("select[name='channelId']")?.value;
+        if (!guildId || !channelId) return ui.notifications.warn("CoC7-KO | 음성 채널을 고르세요.");
+        return sendBridgeCommand({ type: "join", guildId, channelId });
+      }
+
+      if (action === "leaveVoice") return sendBridgeCommand({ type: "leave" });
+
       if (action === "save") return this._save(content);
+    });
+
+    content.querySelector("select[name='guildId']")?.addEventListener("change", event => {
+      this._pickedGuild = event.target.value;
+      this.render();
     });
 
     this._afterRender(content);
