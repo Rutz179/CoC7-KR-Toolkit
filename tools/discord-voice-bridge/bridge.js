@@ -312,4 +312,44 @@ client.once(READY_EVENT, () => {
   });
 });
 
+/* --- Leaving cleanly -------------------------------------------------------
+ *
+ * pm2 stop (and Ctrl+C) send a signal and then kill the process. Killed
+ * outright, the bot never tells Discord it is leaving, and Discord can keep
+ * showing it sitting in the voice channel — a "ghost" that stays until
+ * something else refreshes that channel's state.
+ *
+ * So: leave the voice channel and close the gateway first, then exit. The
+ * remembered channel is NOT cleared, so starting the bridge again brings the
+ * bot back to the same room.
+ */
+let shuttingDown = false;
+
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  console.log(`Shutting down (${signal}); leaving the voice channel first.`);
+
+  try {
+    connection?.destroy();
+  } catch (error) {
+    console.warn("Voice disconnect failed:", error.message);
+  }
+  connection = null;
+
+  // Give the gateway a moment to deliver the disconnect, but never hang.
+  const done = () => process.exit(0);
+  Promise.resolve()
+    .then(() => client.destroy())
+    .catch(error => console.warn("Discord logout failed:", error.message))
+    .finally(done);
+
+  setTimeout(done, 3000).unref();
+}
+
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(signal, () => shutdown(signal));
+}
+
 client.login(DISCORD_TOKEN);
